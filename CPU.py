@@ -11,28 +11,32 @@ mixer.init()
 mixer.music.load("1son+1soff_tone.wav")
 mixer.music.set_volume(0.7)
 
-#################################################################
+class Emulator():
+    def __init__(self):
+        #################################################################
 
-# code to change the mode of the 8XY6 and 8XYE shift opcodes - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-y_to_x = 1
+        # code to change the mode of the 8XY6 and 8XYE shift opcodes - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+        self.y_to_x = 1
 
-# CHIP-8 components
-memory = []                 # 4096 memory locations, each one a byte (4kb total)
-pc = 512                    # program counter - points at the current instruction in memory
-i = 0b000000000000          # "The address register, which is named I, is 12 bits wide and is used with several opcodes that involve memory operations."
-stack = []                  # A stack for 16-bit addresses, which is used to call subroutines/functions and return from them
-delay_timer = 0             # An 8-bit (1 byte) delay timer which is decremented at a rate of 60 Hz (60 times per second) until it reaches 0
-sound_timer = 0             # An 8-bit (1 byte) sound timer which functions like the delay timer, but which also gives off a beeping sound as long as it’s not 0
-registers = []              # 16 8-bit (one byte) general-purpose variable registers numbered 0 through F hexadecimal, ie. 0 through 15 in decimal, called V0 through VF. # VF is a carry flag
+        # CHIP-8 components
+        self.memory = []                 # 4096 memory locations, each one a byte (4kb total)
+        self.pc = 512                    # program counter - points at the current instruction in memory
+        self.i = 0b000000000000          # "The address register, which is named I, is 12 bits wide and is used with several opcodes that involve memory operations."
+        self.stack = []                  # A stack for 16-bit addresses, which is used to call subroutines/functions and return from them
+        self.delay_timer = 0             # An 8-bit (1 byte) delay timer which is decremented at a rate of 60 Hz (60 times per second) until it reaches 0
+        self.sound_timer = 0             # An 8-bit (1 byte) sound timer which functions like the delay timer, but which also gives off a beeping sound as long as it’s not 0
+        self.registers = []              # 16 8-bit (one byte) general-purpose variable registers numbered 0 through F hexadecimal, ie. 0 through 15 in decimal, called V0 through VF. # VF is a carry flag
 
-# code for creating locations in the data storage structures
-for x in range(0, 4096):
-    memory.append(0)
-assert len(memory) == 4096  # "The assert keyword lets you test if a condition in your code returns True, if not, the program will raise an AssertionError." - https://www.w3schools.com/python/ref_keyword_assert.asp
+        # code for creating locations in the data storage structures
+        for x in range(0, 4096):
+            self.memory.append(0)
+        assert len(self.memory) == 4096  # "The assert keyword lets you test if a condition in your code returns True, if not, the program will raise an AssertionError." - https://www.w3schools.com/python/ref_keyword_assert.asp
 
-for x in range(0, 16):
-    registers.append(0)
-assert len(registers) == 16
+        for x in range(0, 16):
+            self.registers.append(0)
+        assert len(self.registers) == 16
+
+        load_rom(self)
 
 #################################################################
 
@@ -59,7 +63,7 @@ key_map = {
     0xF: 'v',
 }
 
-def check_key(key_index):
+def real_check_key(key_index):
     assert key_index in range(0x0, 0xF + 1), "Key index must be a hex char in the range [0x0, 0xF]"
         # the `+ 1` becauase python's range() is *exclusive*
     key = key_map.get(key_index)
@@ -109,49 +113,41 @@ def byte_to_bits(byte):
 
 # load rom
 
-rom = "IBM Logo.ch8"
+def load_rom(emulator):
+    rom = "IBM Logo.ch8"
 
-with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
-    #for index, byte in enumerate(file):
-    #    memory[512+index] = byte
-    offset = 0
-    while True:
-        chunk = file.read(1)
-        if not chunk:
-            break
-        for byte in chunk:
-            assert type(byte) == int
-            memory[512 + offset] = byte
-            offset += 1
+    with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
+        #for index, byte in enumerate(file):
+        #    memory[512+index] = byte
+        offset = 0
+        while True:
+            chunk = file.read(1)
+            if not chunk:
+                break
+            for byte in chunk:
+                assert type(byte) == int
+                emulator.memory[512 + offset] = byte
+                offset += 1
 
 #################################################################
 
-# main loop
-while True:
-
+def step(emulator, check_key):
     # testing
-    print("pc: ", pc)
-    print("current opcode: ", memory[pc], memory[pc + 1])
-    print("i: ", i)
-    print("the registers: ", registers)
+    print("pc: ", emulator.pc)
+    print("current opcode: ", emulator.memory[emulator.pc], emulator.memory[emulator.pc + 1])
+    print("i: ", emulator.i)
+    print("the registers: ", emulator.registers)
 
     # code needed for display
-    while True:
-        event = pygame.event.wait()
-        if event.type == pygame.QUIT:
-            assert False, "fixme"
-        elif event.type == KEYDOWN:
-            if event.key == K_n:
-                break
     pygame.display.flip()
     sleep(0.016)
 
     # FETCH the instruction from memory at the current PC (program counter)
-    fetch = (memory[pc] << 8) + memory[pc+1]            # https://python-reference.readthedocs.io/en/latest/docs/operators/bitwise_left_shift.html
+    fetch = (emulator.memory[emulator.pc] << 8) + emulator.memory[emulator.pc+1]            # https://python-reference.readthedocs.io/en/latest/docs/operators/bitwise_left_shift.html
         # "An instruction is two bytes, so you will need to read two successive bytes from memory and combine them into one 16-bit instruction."
         # `memory`` is a list, `pc`` is the index of said list > it is being bitshifted to the left 
         # and combined with the next slot in memory to form a complete opcode
-    pc += 2
+    emulator.pc += 2
         # iterate the program counter by two (the next opcode in memory)
     
     # DECODE the instruction to find out what the emulator should do
@@ -173,132 +169,132 @@ while True:
         screen.fill(white)      # set entire screen to white (blank) - clears screen
     # 00EE - SUBROUTINES - "Returns from a subroutine" - "does this by removing (“popping”) the last address from the stack and setting the PC to it."
     if opcodechar1 == 0x0 and opcodechar2 == 0x0 and opcodechar3 == 0xE and opcodechar4 == 0xE:
-        adress = stack.pop()
-        pc = address
+        address = emulator.stack.pop()
+        emulator.pc = address
     # 0NNN - "Calls machine code routine at address NNN."
     if opcodechar1 == 0x0:              
         pass    # You can just skip this
     # 1NNN - JUMP - "Jumps to address NNN" - "set PC to NNN, causing the program to jump to that memory location"
     if opcodechar1 == 0x1:
         address = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
-        pc = address
+        emulator.pc = address
     # 2NNN - SUBROUTINES - Calls subroutine at NNN - # https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#00ee-and-2nnn-subroutines
     if opcodechar1 == 0x2:
         nn = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
-        stack.append(pc)
-        pc = nn
+        emulator.stack.append(emulator.pc)
+        emulator.pc = nn
     # 3XNN - SKIP - "Skips the next instruction if VX equals NN"
     if opcodechar1 == 0x3:
         nn = (opcodechar3 << 4) + (opcodechar4)
-        if registers[opcodechar2] == nn:
-            pc += 2
+        if emulator.registers[opcodechar2] == nn:
+            emulator.pc += 2
     # 4XNN - SKIP - "Skips the next instruction if VX does not equal NN"
     if opcodechar1 == 0x4:
         nn = (opcodechar3 << 4) + (opcodechar4)
-        if registers[opcodechar2] != nn:
-            pc += 2
+        if emulator.registers[opcodechar2] != nn:
+            emulator.pc += 2
     # 5XY0 - SKIP - "Skips the next instruction if VX equals VY"
     if opcodechar1 == 0x5:
-        if registers[opcodechar2] == registers[opcodechar3]:
-            pc += 2
+        if emulator.registers[opcodechar2] == emulator.registers[opcodechar3]:
+            emulator.pc += 2
     # 6XNN - SET - "Sets VX to NN" - "set the register VX to the value NN"
     if opcodechar1 == 0x6:
         nn = (opcodechar3 << 4) + opcodechar4
-        registers[opcodechar2] = nn
+        emulator.registers[opcodechar2] = nn
     # 7XNN - ADD - "Add the value NN to VX"-"(Carry flag is not changed)"
     if opcodechar1 == 0x7:
         nn = (opcodechar3 << 4) + opcodechar4
-        registers[opcodechar2] += nn
+        emulator.registers[opcodechar2] += nn
     # 8XY0 - SET - "Sets VX to the value of VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x0:
-        registers[opcodechar2] = registers[opcodechar3]
+        emulator.registers[opcodechar2] = emulator.registers[opcodechar3]
     # 8XY1 - BINARY OR - "Sets VX to VX or VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x1:
-        registers[opcodechar2] |= registers[opcodechar3]
+        emulator.registers[opcodechar2] |= emulator.registers[opcodechar3]
     # 8XY2 - BINARY AND - "Sets VX to VX and VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x2:
-        registers[opcodechar2] &= registers[opcodechar3]
+        emulator.registers[opcodechar2] &= emulator.registers[opcodechar3]
     # 8XY3 - XOR - "Sets VX to VX xor VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x3:
-        registers[opcodechar2] ^= registers[opcodechar3]
+        emulator.registers[opcodechar2] ^= emulator.registers[opcodechar3]
     # 8XY4 - ADD - "Adds VY to VX." - "If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0"
         # why is '255' the max? because each register is 8 bits, and the max value of an 8 bit binary number is 255 (in decimal)
     if opcodechar1 == 0x8 and opcodechar4 == 0x4:
-        registers[opcodechar2] += registers[opcodechar3]
-        # set the carry flag in registers (VF) to 1 if it overflows
-        if (registers[opcodechar2] + registers[opcodechar3]) > 255:
+        emulator.registers[opcodechar2] += emulator.registers[opcodechar3]
+        # set the carry flag in emulator.registers (VF) to 1 if it overflows
+        if (emulator.registers[opcodechar2] + emulator.registers[opcodechar3]) > 255:
             vf = 1
-            registers[0xF] = vf
+            emulator.registers[0xF] = vf
         else:
             vf = 0
-            registers[0xF] = vf
+            emulator.registers[0xF] = vf
     # 8XY5 - SUBTRACT - "sets VX to the result of VX - VY" "If the first operand is larger than the second operand, VF will be set to 1" - otherwise, it will be set to 0 if the second is larger
     if opcodechar1 == 0x8 and opcodechar4 == 0x5:
-        registers[opcodechar2] -= registers[opcodechar3]
+        emulator.registers[opcodechar2] -= emulator.registers[opcodechar3]
         # set the carry flag in registers (VF)
-        if registers[opcodechar2] > registers[opcodechar3]:
+        if emulator.registers[opcodechar2] > emulator.registers[opcodechar3]:
             vf = 1
-            registers[0xF] = vf
-        elif registers[opcodechar2] < registers[opcodechar3]:
+            emulator.registers[0xF] = vf
+        elif emulator.registers[opcodechar2] < emulator.registers[opcodechar3]:
             vf = 0
-            registers[0xF] = vf
+            emulator.registers[0xF] = vf
     # 8XY6 - SHIFT - "Stores the least significant bit of VX in VF and then shifts VX to the right by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
     if opcodechar1 == 0x8 and opcodechar4 == 0x6:
-        if y_to_x == 1:                                         # this is configurable
-            registers[opcodechar2] = registers[opcodechar3]     # set VX to the value of VY
-        least_significant_bit = registers[opcodechar2] & 0b0001 # getting the least significant bit of VX
-        registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
+        if emulator.y_to_x == 1:                                         # this is configurable
+            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]     # set VX to the value of VY
+        least_significant_bit = emulator.registers[opcodechar2] & 0b0001 # getting the least significant bit of VX
+        emulator.registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
         vf = least_significant_bit                              # set least significant bit of VX to VF
-        registers[0xF] = vf
+        emulator.registers[0xF] = vf
     # 8XY7 - SUBTRACT - "sets VX to the result of VY - VX"
     if opcodechar1 == 0x8 and opcodechar4 == 0x7:
-        registers[opcodechar2] = registers[opcodechar3] - registers[opcodechar2]
+        emulator.registers[opcodechar2] = emulator.registers[opcodechar3] - emulator.registers[opcodechar2]
         # set the carry flag in registers (VF)
-        if registers[opcodechar3] > registers[opcodechar2]:
+        if emulator.registers[opcodechar3] > emulator.registers[opcodechar2]:
             vf = 1
-            registers[0xF] = vf
-        elif registers[opcodechar3] < registers[opcodechar2]:
+            emulator.registers[0xF] = vf
+        elif emulator.registers[opcodechar3] < emulator.registers[opcodechar2]:
             vf = 0
-            registers[0xF] = vf
+            emulator.registers[0xF] = vf
     # 8XYE - SHIFT - "Stores the most significant bit of VX in VF and then shifts VX to the left by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
     if opcodechar1 == 0x8 and opcodechar4 == 0xE:
-        if y_to_x == 1:                                         # this is configurable
-            registers[opcodechar2] = registers[opcodechar3]     # set VX to the value of VY
-        registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
-        most_significant_bit = registers[opcodechar2] & 0b1000  # getting the most significant bit of VX
+        if emulator.y_to_x == 1:                                         # this is configurable
+            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]     # set VX to the value of VY
+        emulator.registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
+        most_significant_bit = emulator.registers[opcodechar2] & 0b1000  # getting the most significant bit of VX
         vf = most_significant_bit                               # set least significant bit of VX to VF
-        registers[0xF] = vf
+        emulator.registers[0xF] = vf
     # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
     if opcodechar1 == 0x9:
-        if registers[opcodechar2] != registers[opcodechar3]:
-            pc += 2
+        if emulator.registers[opcodechar2] != emulator.registers[opcodechar3]:
+            emulator.pc += 2
     # ANNN - SET INDEX - "Sets I to the address NNN"
     if opcodechar1 == 0xA:
         address = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
-        i = address
+        emulator.i = address
     # BNNN - JUMP WITH OFFSET - "Jumps to the address NNN plus V0" - Make this configurable if needed! > https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#bnnn-jump-with-offset
     if opcodechar1 == 0xB:
         address = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
-        pc = address + registers[0x0]
+        emulator.pc = address + emulator.registers[0x0]
     # CXNN - RANDOM - "Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN"
     if opcodechar1 == 0xC:
         nn = (opcodechar3 << 4) + opcodechar4
-        registers[opcodechar2] = getrandbits(8) & nn
+        emulator.registers[opcodechar2] = getrandbits(8) & nn
     # DXYN - DISPLAY - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#dxyn-display
     if opcodechar1 == 0xD:
-        vx = registers[opcodechar2]                 # this is X in the opcode
-        vy = registers[opcodechar3]                 # this is Y in the opcode
+        vx = emulator.registers[opcodechar2]                 # this is X in the opcode
+        vy = emulator.registers[opcodechar3]                 # this is Y in the opcode
         screen_logical_width = 64
         screen_logical_height = 32
         x = vx % screen_logical_width
         y = vy % screen_logical_height
-        registers[0xF] = 0                          # vf flag register - set to 0
+        emulator.registers[0xF] = 0                          # vf flag register - set to 0
         sprite_height = opcodechar4
         for row_offset in range(0, sprite_height):
             if y + row_offset >= screen_logical_height:
                 break
-            sprite_row = i + row_offset
-            sprite_data = memory[sprite_row]
+            sprite_row = emulator.i + row_offset
+            sprite_data = emulator.memory[sprite_row]
             bits = byte_to_bits(sprite_data)
             for column_offset, pixel in enumerate(bits):
                 if x + column_offset >= screen_logical_width:
@@ -306,50 +302,65 @@ while True:
                 if pixel == "1":
                     turned_off = draw_to_screen(x + column_offset, y + row_offset)
                     if turned_off:
-                        registers[0xF] = 1          # vf flag register - set to 0
+                        emulator.registers[0xF] = 1          # vf flag register - set to 0
 
     # EX9E - SKIP IF KEY - skip one instruction if the key corresponding to the value in VX is pressed
     if opcodechar1 == 0xE and opcodechar3 == 0x9:
-        vx = registers[opcodechar2]
+        vx = emulator.registers[opcodechar2]
         if check_key(hex(vx)):
-            pc += 2
+            emulator.pc += 2
     # EXA1 - SKIP IF NOT KEY - skip one instruction if the key corresponding to the value in VX is NOT pressed"
     if opcodechar1 == 0xE and opcodechar3 == 0xA:
-        vx = registers[opcodechar2]
+        vx = emulator.registers[opcodechar2]
         if not check_key(hex(vx)):
-            pc += 2
+            emulator.pc += 2
     # FX07 - DELAY TIMER - "Sets VX to the value of the delay timer"
     if opcodechar1 == 0xF and opcodechar4 == 0x7:
-        registers[opcodechar2] = delay_timer
+        emulator.registers[opcodechar2] = emulator.delay_timer
     # FX0A - GET KEY - "A key press is awaited, and then stored in VX" - this blocks the program until a key is pressed
     if opcodechar1 == 0xF and opcodechar4 == 0xA:
         while True:
             keypress = keyboard.read_key()              # "Blocks until a keyboard event happens, then returns that event's name or, if missing, its scan code." - # https://github.com/boppreh/keyboard#keyboardread_keysuppressfalse
             kexkey = get_hexkey_from_key(keypress)      # pass keypress to the function to turn it into a hex number
             if kexkey:                                  # if the function returns a value (which will always be a hex)
-                registers[opcodechar2] = kexkey
+                emulator.registers[opcodechar2] = kexkey
                 break
             else:
                 pass
     # FX15 - DELAY TIMER - "sets the delay timer to the value in VX"
     if opcodechar1 == 0xF and opcodechar3 == 0x1 and opcodechar4 == 0x5:
-        delay_timer = registers[opcodechar2]
+        emulator.delay_timer = emulator.registers[opcodechar2]
     # FX18 - SOUND TIMER - "sets the sound timer to the value in VX"
     if opcodechar1 == 0xF and opcodechar4 == 0x8:
-        sound_timer = registers[opcodechar2]
+        emulator.sound_timer = emulator.registers[opcodechar2]
     # FX1E - ADD TO INDEX - "Adds VX to I. VF is not affected"
         # https://en.wikipedia.org/wiki/CHIP-8#cite_note-18 - a rare case where this opcode should be modifed
     if opcodechar1 == 0xF and opcodechar4 == 0xE:
-        vx = registers[opcodechar2]
-        i += vx
+        vx = emulator.registers[opcodechar2]
+        emulator.i += vx
     # FX29 - FONT -    
 
 
     # decremate sound timer
-    sound_timer = max(0, sound_timer - 1) 
+    emulator.sound_timer = max(0, emulator.sound_timer - 1) 
 
     # check sound_timer
-    if sound_timer <= 0:
+    if emulator.sound_timer <= 0:
         mixer.music.stop()
     else:
         sleep(0.002)                                   # simulates the 700 cycles per second clock speed
+
+# if not running in tests, actually start the game loop
+if __name__ == "__main__":
+    emulator = Emulator()
+    # main loop
+    while True:
+        # event loop
+        while True:
+            event = pygame.event.wait()
+            if event.type == pygame.QUIT:
+                assert False, "fixme"
+            elif event.type == KEYDOWN:
+                if event.key == K_n:
+                    break
+        step(emulator, real_check_key)
