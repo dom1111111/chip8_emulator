@@ -1,12 +1,14 @@
 # module imports
 from time import sleep
 import pygame
+from pygame import mixer
+from pygame.locals import *
 from random import getrandbits
 import keyboard
 
 # the code needed for audio
 mixer.init()
-mixer.music.load("2022.05.09_CPU_emulator/1son+1soff_tone.wav")
+mixer.music.load("1son+1soff_tone.wav")
 mixer.music.set_volume(0.7)
 
 #################################################################
@@ -110,18 +112,37 @@ def byte_to_bits(byte):
 rom = "IBM Logo.ch8"
 
 with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
-    for index, byte in enumerate(file):
-        memory[512]
+    #for index, byte in enumerate(file):
+    #    memory[512+index] = byte
+    offset = 0
+    while True:
+        chunk = file.read(1)
+        if not chunk:
+            break
+        for byte in chunk:
+            assert type(byte) == int
+            memory[512 + offset] = byte
+            offset += 1
 
 #################################################################
 
 # main loop
 while True:
 
+    # testing
+    print("pc: ", pc)
+    print("current opcode: ", memory[pc], memory[pc + 1])
+    print("i: ", i)
+    print("the registers: ", registers)
+
     # code needed for display
-    for event in pygame.event.get():
+    while True:
+        event = pygame.event.wait()
         if event.type == pygame.QUIT:
-            break
+            assert False, "fixme"
+        elif event.type == KEYDOWN:
+            if event.key == K_n:
+                break
     pygame.display.flip()
     sleep(0.016)
 
@@ -254,7 +275,7 @@ while True:
     # ANNN - SET INDEX - "Sets I to the address NNN"
     if opcodechar1 == 0xA:
         address = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
-        i = adress
+        i = address
     # BNNN - JUMP WITH OFFSET - "Jumps to the address NNN plus V0" - Make this configurable if needed! > https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#bnnn-jump-with-offset
     if opcodechar1 == 0xB:
         address = (opcodechar2 << 8) + (opcodechar3 << 4) + (opcodechar4)
