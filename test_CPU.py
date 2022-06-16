@@ -38,3 +38,15 @@ def test_7X():
     CPU.step(emulator, None)
     assert emulator.registers[6] == 42
 
+def test_registers_never_overflow():
+    for first_half_of_opcode in range(0xFF):
+        for second_half_of_opcode in range(0xFF):
+            for register_index_1 in range(16):
+                #for possible_register_starting_value in range(256):
+                emulator = CPU.Emulator()
+                emulator.memory[512] = first_half_of_opcode
+                emulator.memory[513] = second_half_of_opcode
+                #emulator.registers[register_index_1] = possible_register_starting_value
+                CPU.step(emulator, None)
+                for register_index in range(16):
+                    assert emulator.registers[register_index] in range(256)

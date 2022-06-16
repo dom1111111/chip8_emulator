@@ -200,11 +200,10 @@ def step(emulator, check_key):
     if opcodechar1 == 0x6:
         nn = (opcodechar3 << 4) + opcodechar4
         emulator.registers[opcodechar2] = nn
-# BROKEN    # 7XNN - ADD - "Add the value NN to VX"-"(Carry flag is not changed)"
+    # 7XNN - ADD - "Add the value NN to VX"-"(Carry flag is not changed)"
     if opcodechar1 == 0x7:
         nn = (opcodechar3 << 4) + opcodechar4
         emulator.registers[opcodechar2] += nn
-        emulator.registers[opcodechar2] = emulator.registers[opcodechar2] & 0xFF
     # 8XY0 - SET - "Sets VX to the value of VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x0:
         emulator.registers[opcodechar2] = emulator.registers[opcodechar3]
@@ -217,18 +216,16 @@ def step(emulator, check_key):
     # 8XY3 - XOR - "Sets VX to VX xor VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x3:
         emulator.registers[opcodechar2] ^= emulator.registers[opcodechar3]
-# BROKEN    # 8XY4 - ADD - "Adds VY to VX." - "If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0"
+    # 8XY4 - ADD - "Adds VY to VX." - "If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0"
         # why is '255' the max? because each register is 8 bits, and the max value of an 8 bit binary number is 255 (in decimal)
     if opcodechar1 == 0x8 and opcodechar4 == 0x4:
         emulator.registers[opcodechar2] += emulator.registers[opcodechar3]
         # set the carry flag in emulator.registers (VF) to 1 if it overflows
-        if (emulator.registers[opcodechar2] + emulator.registers[opcodechar3]) > 255:
-            vf = 1
-            emulator.registers[0xF] = vf
+        if emulator.registers[opcodechar2] > 255:
+            emulator.registers[0xF] = 1
         else:
-            vf = 0
-            emulator.registers[0xF] = vf
-# BROKEN    # 8XY5 - SUBTRACT - "sets VX to the result of VX - VY" "If the first operand is larger than the second operand, VF will be set to 1" - otherwise, it will be set to 0 if the second is larger
+            emulator.registers[0xF] = 0
+    # 8XY5 - SUBTRACT - "sets VX to the result of VX - VY" "If the first operand is larger than the second operand, VF will be set to 1" - otherwise, it will be set to 0 if the second is larger
     if opcodechar1 == 0x8 and opcodechar4 == 0x5:
         emulator.registers[opcodechar2] -= emulator.registers[opcodechar3]
         # set the carry flag in registers (VF)
@@ -264,7 +261,7 @@ def step(emulator, check_key):
         most_significant_bit = emulator.registers[opcodechar2] & 0b1000  # getting the most significant bit of VX
         vf = most_significant_bit                               # set least significant bit of VX to VF
         emulator.registers[0xF] = vf
-# BROKEN    # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
+    # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
     if opcodechar1 == 0x9:
         if emulator.registers[opcodechar2] != emulator.registers[opcodechar3]:
             emulator.pc += 2
@@ -351,8 +348,9 @@ def step(emulator, check_key):
         sleep(0.002)                                   # simulates the 700 cycles per second clock speed
 
     # make sure that the register value is within its proper minimum and maximum value
-    for x in range(16):
-        assert emulator.registers[x] in range(0, 256), 'shits broke yo! (overflow)'
+    for register_index in range(16):
+        emulator.registers[register_index] = emulator.registers[register_index] & 0xFF  # make sure that register is within the correct range (8 bit binary number)
+        assert emulator.registers[register_index] in range(0, 256), 'shits broke yo! (overflow)'
 
     ######################
 
