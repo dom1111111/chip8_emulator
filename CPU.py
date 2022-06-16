@@ -119,7 +119,7 @@ def byte_to_bits(byte):
 # load rom
 
 def load_rom(emulator):
-    rom = "IBM Logo.ch8"
+    rom = "test_opcode.ch8"
 
     with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
         #for index, byte in enumerate(file):
@@ -200,10 +200,11 @@ def step(emulator, check_key):
     if opcodechar1 == 0x6:
         nn = (opcodechar3 << 4) + opcodechar4
         emulator.registers[opcodechar2] = nn
-    # 7XNN - ADD - "Add the value NN to VX"-"(Carry flag is not changed)"
+# BROKEN    # 7XNN - ADD - "Add the value NN to VX"-"(Carry flag is not changed)"
     if opcodechar1 == 0x7:
         nn = (opcodechar3 << 4) + opcodechar4
         emulator.registers[opcodechar2] += nn
+        emulator.registers[opcodechar2] = emulator.registers[opcodechar2] & 0xFF
     # 8XY0 - SET - "Sets VX to the value of VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x0:
         emulator.registers[opcodechar2] = emulator.registers[opcodechar3]
@@ -216,7 +217,7 @@ def step(emulator, check_key):
     # 8XY3 - XOR - "Sets VX to VX xor VY"
     if opcodechar1 == 0x8 and opcodechar4 == 0x3:
         emulator.registers[opcodechar2] ^= emulator.registers[opcodechar3]
-    # 8XY4 - ADD - "Adds VY to VX." - "If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0"
+# BROKEN    # 8XY4 - ADD - "Adds VY to VX." - "If the result is larger than 255 (and thus overflows the 8-bit register VX), the flag register VF is set to 1. If it doesn’t overflow, VF is set to 0"
         # why is '255' the max? because each register is 8 bits, and the max value of an 8 bit binary number is 255 (in decimal)
     if opcodechar1 == 0x8 and opcodechar4 == 0x4:
         emulator.registers[opcodechar2] += emulator.registers[opcodechar3]
@@ -227,7 +228,7 @@ def step(emulator, check_key):
         else:
             vf = 0
             emulator.registers[0xF] = vf
-    # 8XY5 - SUBTRACT - "sets VX to the result of VX - VY" "If the first operand is larger than the second operand, VF will be set to 1" - otherwise, it will be set to 0 if the second is larger
+# BROKEN    # 8XY5 - SUBTRACT - "sets VX to the result of VX - VY" "If the first operand is larger than the second operand, VF will be set to 1" - otherwise, it will be set to 0 if the second is larger
     if opcodechar1 == 0x8 and opcodechar4 == 0x5:
         emulator.registers[opcodechar2] -= emulator.registers[opcodechar3]
         # set the carry flag in registers (VF)
@@ -237,7 +238,7 @@ def step(emulator, check_key):
         elif emulator.registers[opcodechar2] < emulator.registers[opcodechar3]:
             vf = 0
             emulator.registers[0xF] = vf
-    # 8XY6 - SHIFT - "Stores the least significant bit of VX in VF and then shifts VX to the right by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+# BROKEN    # 8XY6 - SHIFT - "Stores the least significant bit of VX in VF and then shifts VX to the right by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
     if opcodechar1 == 0x8 and opcodechar4 == 0x6:
         if emulator.y_to_x == 1:                                         # this is configurable
             emulator.registers[opcodechar2] = emulator.registers[opcodechar3]     # set VX to the value of VY
@@ -263,7 +264,7 @@ def step(emulator, check_key):
         most_significant_bit = emulator.registers[opcodechar2] & 0b1000  # getting the most significant bit of VX
         vf = most_significant_bit                               # set least significant bit of VX to VF
         emulator.registers[0xF] = vf
-    # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
+# BROKEN    # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
     if opcodechar1 == 0x9:
         if emulator.registers[opcodechar2] != emulator.registers[opcodechar3]:
             emulator.pc += 2
@@ -348,6 +349,10 @@ def step(emulator, check_key):
         mixer.music.stop()
     else:
         sleep(0.002)                                   # simulates the 700 cycles per second clock speed
+
+    # make sure that the register value is within its proper minimum and maximum value
+    for x in range(16):
+        assert emulator.registers[x] in range(0, 256), 'shits broke yo! (overflow)'
 
     ######################
 
