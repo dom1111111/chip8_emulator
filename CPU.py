@@ -107,7 +107,12 @@ def draw_to_screen(x, y):
         print("oh my fucking god what is this shit")
 
 def byte_to_bits(byte):
-    return list(str(bin(byte)))[2:]
+    print("BYYYYTTTEEEEETOBIIIITS: ", byte)
+    bits = str(bin(byte))[2:]
+    bits = bits.zfill(8)                # adds "padding" - https://thispointer.com/python-how-to-pad-strings-with-zero-space-or-some-other-character/
+    bits = list(bits)
+    return bits
+
 
 #################################################################
 
@@ -132,12 +137,6 @@ def load_rom(emulator):
 #################################################################
 
 def step(emulator, check_key):
-    # testing
-    print("pc: ", emulator.pc)
-    print("current opcode: ", emulator.memory[emulator.pc], emulator.memory[emulator.pc + 1])
-    print("i: ", emulator.i)
-    print("the registers: ", emulator.registers)
-
     # code needed for display
     pygame.display.flip()
     sleep(0.016)
@@ -349,6 +348,15 @@ def step(emulator, check_key):
         mixer.music.stop()
     else:
         sleep(0.002)                                   # simulates the 700 cycles per second clock speed
+
+    ######################
+
+    # testing
+    print("pc: ", emulator.pc, "hex of pc: ", hex(emulator.pc))
+    print("current opcode: ", emulator.memory[emulator.pc], emulator.memory[emulator.pc + 1])
+    print("i: ", emulator.i, "hex of i", hex(emulator.i))
+    print("the registers: ", emulator.registers)
+    print("the hex of registers", [hex(x) for x in emulator.registers])
 
 # if not running in tests, actually start the game loop
 if __name__ == "__main__":

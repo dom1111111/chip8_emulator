@@ -17,3 +17,13 @@ def test_first_ibm_opcode_runs_correctly():
     CPU.step(emulator, fake_check_key_that_always_says_key_is_pressed)
     CPU.step(emulator, fake_check_key_that_always_says_key_is_pressed)
     assert emulator.i == 0x22A
+
+def test_bytetobits():
+    test_cases = [
+        (255, ['1','1','1','1','1','1','1','1']),
+        (0, ['0','0','0','0','0','0','0','0'])
+    ]
+    for (input, expected_output) in test_cases:
+        actual_output = CPU.byte_to_bits(input)
+        assert actual_output == expected_output
+
