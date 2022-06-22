@@ -11,12 +11,14 @@ mixer.init()
 mixer.music.load("1son+1soff_tone.wav")
 mixer.music.set_volume(0.7)
 
+
+#################################################################
+
 class Emulator():
     def __init__(self):
-        #################################################################
 
         # code to change the mode of the 8XY6 and 8XYE shift opcodes - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
-        self.y_to_x = 1
+        self.y_to_x = 1                 # `1` is just for this setting, but it could be anything
 
         # CHIP-8 components
         self.memory = []                 # 4096 memory locations, each one a byte (4kb total)
@@ -42,7 +44,6 @@ class Emulator():
 
 # keypad functions
 # https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#keypad
-
 
 key_map = {
     0x0: 'x',
@@ -235,14 +236,14 @@ def step(emulator, check_key):
         elif emulator.registers[opcodechar2] < emulator.registers[opcodechar3]:
             vf = 0
             emulator.registers[0xF] = vf
-# BROKEN    # 8XY6 - SHIFT - "Stores the least significant bit of VX in VF and then shifts VX to the right by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
+    # 8XY6 - SHIFT - "Stores the least significant bit of VX in VF and then shifts VX to the right by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
     if opcodechar1 == 0x8 and opcodechar4 == 0x6:
-        if emulator.y_to_x == 1:                                         # this is configurable
-            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]     # set VX to the value of VY
-        least_significant_bit = emulator.registers[opcodechar2] & 0b0001 # getting the least significant bit of VX
-        emulator.registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
-        vf = least_significant_bit                              # set least significant bit of VX to VF
+        if emulator.y_to_x == 1:                                                # this is configurable
+            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]   # set VX to the value of VY
+        least_significant_bit_of_vx = emulator.registers[opcodechar2] & 0b0001  # getting the least significant bit of VX
+        vf = least_significant_bit_of_vx                                        # set least significant bit of VX to VF
         emulator.registers[0xF] = vf
+        emulator.registers[opcodechar2] >>= 1                                   # bitwise shift the value of VX to the right by 1
     # 8XY7 - SUBTRACT - "sets VX to the result of VY - VX"
     if opcodechar1 == 0x8 and opcodechar4 == 0x7:
         emulator.registers[opcodechar2] = emulator.registers[opcodechar3] - emulator.registers[opcodechar2]
@@ -255,12 +256,12 @@ def step(emulator, check_key):
             emulator.registers[0xF] = vf
     # 8XYE - SHIFT - "Stores the most significant bit of VX in VF and then shifts VX to the left by 1" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#8xy6-and-8xye-shift
     if opcodechar1 == 0x8 and opcodechar4 == 0xE:
-        if emulator.y_to_x == 1:                                         # this is configurable
-            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]     # set VX to the value of VY
-        emulator.registers[opcodechar2] >>= 1                            # bitwise shift the value of VX to the right by 1
-        most_significant_bit = emulator.registers[opcodechar2] & 0b1000  # getting the most significant bit of VX
-        vf = most_significant_bit                               # set least significant bit of VX to VF
+        if emulator.y_to_x == 1:                                                # this is configurable
+            emulator.registers[opcodechar2] = emulator.registers[opcodechar3]   # set VX to the value of VY
+        most_significant_bit_of_vx = emulator.registers[opcodechar2] & 0b1000   # getting the most significant bit of VX
+        vf = most_significant_bit_of_vx                                         # set least significant bit of VX to VF
         emulator.registers[0xF] = vf
+        emulator.registers[opcodechar2] <<= 1                                   # bitwise shift the value of VX to the left by 1
     # 9XY0 - SKIP - "Skips the next instruction if VX does not equal VY"
     if opcodechar1 == 0x9:
         if emulator.registers[opcodechar2] != emulator.registers[opcodechar3]:

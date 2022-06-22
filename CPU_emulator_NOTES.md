@@ -87,27 +87,16 @@ def check_key(key):
         pass
 ```
 
+---
 
-TODO:
+# TODO:
+
+* separate IO from rest of code
+
 * finish any remaining opcodes
-* do the remaining stuff that Nikita mentioned to you:
 
-btw if it helps your understanding
-maybe nuke the draw opcode and rewrite it from scratch?
-since now you have an idea of how it's supposed to work
+* use this ROM to test things out: https://github.com/corax89/chip8-test-rom
+    * (the test_opcode.ch8 file in there)
+    * it actually executes most of the instructions and prints out "ok" if you implemented them correctly
 
-btw I figured out why the logo is messed up
-I won't post the solution in case you want to try your hand at it but if you want a hint or the answer just let me know
-
-
-ok so I played around with it some more
-once you get the IBM logo running correctly, I highly recommend you use this ROM to test things out: https://github.com/corax89/chip8-test-rom
-
-(the test_opcode.ch8 file in there)
-it actually executes most of the instructions and prints out "ok" if you implemented them correctly
-
-btw in case browsing the changes is tricky
-here's the commit that refactored the code (but didn't change any logic): https://github.com/dom1111111/chip8_emulator/commit/b7d3d94b6eb10d0f2fddc51e354519a6c923d2f0
-and here's the commit where we added reading from a file: https://github.com/dom1111111/chip8_emulator/commit/85c07edb7db1ab8ec03c592d3a72f44a8eed3a64
-I feel bad about writing yesterday
-so seriously if you have any questions at all about what we added don't hesitate to re-write it or ask
+* -> fix broken opcodes
