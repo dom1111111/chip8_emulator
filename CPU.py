@@ -114,6 +114,35 @@ def byte_to_bits(byte):
     bits = list(bits)
     return bits
 
+##########
+
+# The font
+font = [
+0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+0x20, 0x60, 0x20, 0x20, 0x70, # 1
+0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+]
+
+# storing the font sprite data in memory
+"""
+counter = 0
+for sprite in font:
+    Emulator().memory[0x050 + counter] = sprite
+    counter += 1
+"""
 
 #################################################################
 
@@ -336,8 +365,11 @@ def step(emulator, check_key):
     if opcodechar1 == 0xF and opcodechar4 == 0xE:
         vx = emulator.registers[opcodechar2]
         emulator.i += vx
-    # FX29 - FONT -    
-
+    # FX29 - FONT - "Sets I to the location of the sprite for the character in VX"
+    if opcodechar1 == 0xF and opcodechar4 == 0x9:
+        vx = emulator.registers[opcodechar2]
+        sprite_adress = (vx * 5) + 0x050    # `0x050 is where the font sprite data is located`
+        emulator.i = sprite_adress
 # BROKEN    # FX33 - BINARY CODED DECIMAL CONVERSION - "It takes the number in VX and converts it to three decimal digits, storing these digits in memory at the address in the index register I" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx33-binary-coded-decimal-conversion
     if opcodechar1 == 0xF and opcodechar3 == 0x3:
         vx = emulator.registers[opcodechar2]
@@ -348,16 +380,16 @@ def step(emulator, check_key):
         # **has alternate behavior for old roms** - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx55-and-fx65-store-and-load-memory
     if opcodechar1 == 0xF and opcodechar3 == 0x5:
         vx = emulator.registers[opcodechar2]
-        for x in range(vx):
-            counter = 0
+        counter = 0
+        for x in range(vx + 1):
             emulator.memory[emulator.i + counter] = emulator.registers[counter]
             counter =+ 1
     # FX65 - READ FROM MEMORY - "Fills values to registers V0 to VX (including VX) from memory, starting at address I"
         # **has alternate behavior for old roms** - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx55-and-fx65-store-and-load-memory
     if opcodechar1 == 0xF and opcodechar3 == 0x6:
         vx = emulator.registers[opcodechar2]
-        for x in range(vx):
-            counter = 0
+        counter = 0
+        for x in range(vx + 1):
             emulator.registers[counter] = emulator.memory[emulator.i + counter]
             counter =+ 1
     
