@@ -338,7 +338,31 @@ def step(emulator, check_key):
         emulator.i += vx
     # FX29 - FONT -    
 
-
+# BROKEN    # FX33 - BINARY CODED DECIMAL CONVERSION - "It takes the number in VX and converts it to three decimal digits, storing these digits in memory at the address in the index register I" - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx33-binary-coded-decimal-conversion
+    if opcodechar1 == 0xF and opcodechar3 == 0x3:
+        vx = emulator.registers[opcodechar2]
+        emulator.memory[emulator.i] = int(vx / 100)
+        emulator.memory[emulator.i + 1] = int((vx % 100) / 10)
+        emulator.memory[emulator.i + 2] = vx % 10
+# BROKEN    # FX55 - WRTIE TO MEMORY - Stores values from registers V0 to VX (including VX) to memory, starting at address I
+        # **has alternate behavior for old roms** - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx55-and-fx65-store-and-load-memory
+    if opcodechar1 == 0xF and opcodechar3 == 0x5:
+        vx = emulator.registers[opcodechar2]
+        for x in range(vx):
+            counter = 0
+            emulator.memory[emulator.i + counter] = emulator.registers[counter]
+            counter =+ 1
+    # FX65 - READ FROM MEMORY - "Fills values to registers V0 to VX (including VX) from memory, starting at address I"
+        # **has alternate behavior for old roms** - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx55-and-fx65-store-and-load-memory
+    if opcodechar1 == 0xF and opcodechar3 == 0x6:
+        vx = emulator.registers[opcodechar2]
+        for x in range(vx):
+            counter = 0
+            emulator.registers[counter] = emulator.memory[emulator.i + counter]
+            counter =+ 1
+    
+    ########################
+    
     # decremate sound timer
     emulator.sound_timer = max(0, emulator.sound_timer - 1) 
 
@@ -356,11 +380,13 @@ def step(emulator, check_key):
     ######################
 
     # testing
-    print("pc: ", emulator.pc, "hex of pc: ", hex(emulator.pc))
+    print("pc: ", emulator.pc)
+    print("hex pc: ", hex(emulator.pc))
     print("current opcode: ", emulator.memory[emulator.pc], emulator.memory[emulator.pc + 1])
-    print("i: ", emulator.i, "hex of i", hex(emulator.i))
-    print("the registers: ", emulator.registers)
-    print("the hex of registers", [hex(x) for x in emulator.registers])
+    print("i: ", emulator.i)
+    print("hex i", hex(emulator.i))
+    print("registers: ", emulator.registers)
+    print("hex registers", [hex(x) for x in emulator.registers])
 
 # if not running in tests, actually start the game loop
 if __name__ == "__main__":
@@ -373,6 +399,6 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 assert False, "fixme"
             elif event.type == KEYDOWN:
-                if event.key == K_n:
+                if event.key == K_SPACE:
                     break
         step(emulator, real_check_key)
