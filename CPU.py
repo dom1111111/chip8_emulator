@@ -16,49 +16,28 @@ mixer.music.set_volume(0.7)
 #################################################################
 # CHIP 8 Components
 
-## OLD
-class FixedBitUnsignedNumber:
-    """descriptor class to create a property which can hold a number with a value bteween 0 to n, 
-    where n is the max possible value of a binary number with at most `bit_size` bits"""
-    def __init__(self, bit_size:int):
-        self._size = bit_size
 
-    def _ensure_limit(self, val:int):
-        """make sure that val is between 0 and max value of bit size"""
-        if not val >= 0:
-            raise ValueError('value must be above 0')
-        elif not val <= (2 ** self._size - 1):
-            raise ValueError(f'value must be no higher than max value of a {self._size}-bit number')
+#-----------
+# Misc helper functions
 
-    def __set_name__(self, owner, name):
-        self.name = name
-
-    def __get__(self, instance, owner=None) -> int:
-        return instance.__dict__.get(self.name)
-
-    def __set__(self, instance, value:int):
-        self._ensure_limit(value)
-        instance.__dict__[self.name] = value
+def _ensure_bit_limit(value:int, bit_size:int):
+    """make sure that val is between 0 and max value of bit size"""
+    if not isinstance(value, int) or not isinstance(bit_size, int):
+        raise TypeError('value and bit  must be an int')
+    elif not value >= 0:
+        raise ValueError('value must be positive (above 0)')
+    elif not value <= (2 ** bit_size - 1):
+        raise ValueError(f'value must be no higher than max value of a {bit_size}-bit number')
 
 #-----------
 # CHIP 8 Components
 
-class FixedInt:
+class FixedBitInt:
     """create a positive integer which can have a value bteween 0 to n, 
     where n is the max possible value of a binary number with `bit_size` bits"""
-    def __init__(self, bit_size:int, initial_value:int):
+    def __init__(self, bit_size:int):
+        self._val = 0
         self._size = bit_size
-        self._ensure_limit(initial_value)
-        self._val = initial_value
-
-    def _ensure_limit(self, val:int):
-        """make sure that val is between 0 and max value of bit size"""
-        if not isinstance(val, int):
-            raise TypeError('value must be an int')
-        elif not val >= 0:
-            raise ValueError('value must be positive (above 0)')
-        elif not val <= (2 ** self._size - 1):
-            raise ValueError(f'value must be no higher than max value of a {self._size}-bit number')
 
     def get(self) -> int:
         """get value"""
@@ -66,43 +45,59 @@ class FixedInt:
 
     def set(self, value:int):
         """set value"""
-        self._ensure_limit(value)
+        _ensure_bit_limit(value, self._size)
         self._val = value
 
 
-class FixedArray:
-    """Class to represent memory, with fixed cell size (messured in bits) and number of cells"""
+class FixedBitArray:
+    """Create an array, where each item is an int with max bit size, and fixed length (number of items)"""
     def __init__(self, bit_size:int, length:int):
         self._mem = [0] * length
-        self._cell_size = bit_size
+        self._size = bit_size
     
-    def write(self, index:int, data:int):
-        """Set value at memory index to int value of `data`. Value must be no more than `cell_size`"""
-        assert isinstance(data, int)            # ensure data value type is int
-        assert data <= 2 ** self.cell_size - 1  # ensure the value is no more than max possible value of a `cell_size` bit number
-        self._mem[index] = data
+    def write(self, index:int, value:int):
+        """Set value at memory index to `value`. Value must be no more than `cell_size`"""
+        _ensure_bit_limit(value, self._size)
+        self._mem[index] = value
 
     def read(self, index:int) -> int:
         """Get value at memory index"""
         return self._mem[index]
 
-    def clear_all(self):
+    def clear(self):
         """resets all memory cells to 0"""
         self._mem = [0] * len(self._mem)
 
 
-class Stack:
-    pass
+class FixedBitStack:
+    """create a stack, where each item is an int with max bit size, and max length (number of items)"""
+    def __init__(self, bit_size:int, length:int):
+        self._stack = []
+        self._size = bit_size
+        self._len = length
+
+    def push(self, value:int):
+        _ensure_bit_limit(value, self._size)
+        if len(self._stack) >= self._len:
+            raise OverflowError
+        self._stack.append(value)
+
+    def pop(self) -> int:
+        return self._stack.pop()
+    
+    def peek(self) -> int:
+        return self._stack[-1]
 
 
-class Timer(FixedBitUnsignedNumber):
-    def __init__(self):
+class CountDown(FixedBitInt):
+    def __init__(self, rate:int):
         super().__init__(8)
+        self.rate = rate
 
     def _main_loop(self):
         while self._val > 0:
             self._val -= 1
-            sleep(0.01666666666666666666666666666667)   # 60 times per second 
+            sleep(1/60)     # 60 Hz
 
     # needs to have 
     # set value
@@ -110,11 +105,20 @@ class Timer(FixedBitUnsignedNumber):
     # main loop which is initiated by set_value and runs in seperate thread to decrement timers by one sixty times per second
 
 
-class Display:
+class NoisyCountDown(CountDown):
+    pass
+
+
+class HexKeyPad:
     def __init__(self):
         pass
 
 
+class TerminalDisplay:
+    def __init__(self, width:int, height:int):
+        pass
+
+    # font should be in here
 
 
 #################################################################
@@ -127,23 +131,23 @@ class Emulator():
     def __init__(self):
         # CHIP-8 components
         ## memory
-        self.memory = FixedArray(8, 4096)   # 4KB (4,096 bytes) of RAM, where each cell is 1 byte
+        self.memory = FixedBitArray(8, 4096)    # 4KB (4,096 bytes) of RAM, where each cell is 1 byte
         ## stack
-        self.stack = []                     # LIFO array of 16 x 16-bit values - stores the address to return to after finishing a subroutine
+        self.stack = FixedBitStack(16, 16)      # LIFO array of 16 x 16-bit values - stores the address to return to after finishing a subroutine
         ## registers
-        self.g_regs = FixedArray()          # 16 x 8-bit general purpose registers, labeled V0-VF (1-16 in hexidecimal). VF is a carry flag, and should not be used by the programs directly
-        self.pc = 0                         # 16-bit program counter - points to the memory adress of the current instruction
-        self.i = 0                          # 16-bit index register - stores memory adresses
+        self.g_regs = FixedBitArray(8, 16)      # 16 x 8-bit general purpose registers, labeled V0-VF (1-16 in hexidecimal). VF is a carry flag, and should not be used by the programs directly
+        self.pc = FixedBitInt(16)               # 16-bit program counter - points to the memory adress of the current instruction
+        self.i = FixedBitInt(16)                # 16-bit index register - stores memory adresses
         ### timers
-        self.dt = 0                     # 8-bit delay timer - automatically decremented at a rate of 60 Hz (60 times per second) until it reaches 0
-        self.st = 0                     # 8-bit sound timer - functions like the delay timer, but which also gives off a beeping sound as long as it’s not 0
+        self.dt = CountDown(60)                 # 8-bit delay timer - automatically decremented at a rate of 60 Hz (60 times per second) until it reaches 0
+        self.st = NoisyCountDown(60)            # 8-bit sound timer - functions like the delay timer, but which also gives off a beeping sound as long as it’s not 0
         ## keypad
-        self.keypad = None              # 16-key hexadecimal keypad
+        self.keypad = HexKeyPad()               # 16-key hexadecimal keypad
         ## display
-        self.display = None             # 64x32-pixel monochrome display
+        self.display = TerminalDisplay(64, 32)  # 64x32-pixel monochrome display
         ###> font
 
-        self.emu_speed = 500            # an int representing the Hz (cycles per second) that the emulator's main loop should run at
+        self.emu_speed = 500                    # an int representing the Hz (cycles per second) that the emulator's main loop should run at
 
     #---------
 
