@@ -1,18 +1,222 @@
 # module imports
-from time import sleep
+from time import sleep, time
 import pygame
 from pygame import mixer
 from pygame.locals import *
 from random import getrandbits
 import keyboard
 
+from threading import Thread
+
 # the code needed for audio
 mixer.init()
 mixer.music.load("1son+1soff_tone.wav")
 mixer.music.set_volume(0.7)
 
+#################################################################
+# CHIP 8 Components
+
+## OLD
+class FixedBitUnsignedNumber:
+    """descriptor class to create a property which can hold a number with a value bteween 0 to n, 
+    where n is the max possible value of a binary number with at most `bit_size` bits"""
+    def __init__(self, bit_size:int):
+        self._size = bit_size
+
+    def _ensure_limit(self, val:int):
+        """make sure that val is between 0 and max value of bit size"""
+        if not val >= 0:
+            raise ValueError('value must be above 0')
+        elif not val <= (2 ** self._size - 1):
+            raise ValueError(f'value must be no higher than max value of a {self._size}-bit number')
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __get__(self, instance, owner=None) -> int:
+        return instance.__dict__.get(self.name)
+
+    def __set__(self, instance, value:int):
+        self._ensure_limit(value)
+        instance.__dict__[self.name] = value
+
+#-----------
+# CHIP 8 Components
+
+class FixedInt:
+    """create a positive integer which can have a value bteween 0 to n, 
+    where n is the max possible value of a binary number with `bit_size` bits"""
+    def __init__(self, bit_size:int, initial_value:int):
+        self._size = bit_size
+        self._ensure_limit(initial_value)
+        self._val = initial_value
+
+    def _ensure_limit(self, val:int):
+        """make sure that val is between 0 and max value of bit size"""
+        if not isinstance(val, int):
+            raise TypeError('value must be an int')
+        elif not val >= 0:
+            raise ValueError('value must be positive (above 0)')
+        elif not val <= (2 ** self._size - 1):
+            raise ValueError(f'value must be no higher than max value of a {self._size}-bit number')
+
+    def get(self) -> int:
+        """get value"""
+        return self._val
+
+    def set(self, value:int):
+        """set value"""
+        self._ensure_limit(value)
+        self._val = value
+
+
+class FixedArray:
+    """Class to represent memory, with fixed cell size (messured in bits) and number of cells"""
+    def __init__(self, bit_size:int, length:int):
+        self._mem = [0] * length
+        self._cell_size = bit_size
+    
+    def write(self, index:int, data:int):
+        """Set value at memory index to int value of `data`. Value must be no more than `cell_size`"""
+        assert isinstance(data, int)            # ensure data value type is int
+        assert data <= 2 ** self.cell_size - 1  # ensure the value is no more than max possible value of a `cell_size` bit number
+        self._mem[index] = data
+
+    def read(self, index:int) -> int:
+        """Get value at memory index"""
+        return self._mem[index]
+
+    def clear_all(self):
+        """resets all memory cells to 0"""
+        self._mem = [0] * len(self._mem)
+
+
+class Stack:
+    pass
+
+
+class Timer(FixedBitUnsignedNumber):
+    def __init__(self):
+        super().__init__(8)
+
+    def _main_loop(self):
+        while self._val > 0:
+            self._val -= 1
+            sleep(0.01666666666666666666666666666667)   # 60 times per second 
+
+    # needs to have 
+    # set value
+    # get value
+    # main loop which is initiated by set_value and runs in seperate thread to decrement timers by one sixty times per second
+
+
+class Display:
+    def __init__(self):
+        pass
+
+
+
 
 #################################################################
+
+# CURRENT
+
+class Emulator():
+    """CHIP-8 Emulator. ... """
+
+    def __init__(self):
+        # CHIP-8 components
+        ## memory
+        self.memory = FixedArray(8, 4096)   # 4KB (4,096 bytes) of RAM, where each cell is 1 byte
+        ## stack
+        self.stack = []                     # LIFO array of 16 x 16-bit values - stores the address to return to after finishing a subroutine
+        ## registers
+        self.g_regs = FixedArray()          # 16 x 8-bit general purpose registers, labeled V0-VF (1-16 in hexidecimal). VF is a carry flag, and should not be used by the programs directly
+        self.pc = 0                         # 16-bit program counter - points to the memory adress of the current instruction
+        self.i = 0                          # 16-bit index register - stores memory adresses
+        ### timers
+        self.dt = 0                     # 8-bit delay timer - automatically decremented at a rate of 60 Hz (60 times per second) until it reaches 0
+        self.st = 0                     # 8-bit sound timer - functions like the delay timer, but which also gives off a beeping sound as long as it’s not 0
+        ## keypad
+        self.keypad = None              # 16-key hexadecimal keypad
+        ## display
+        self.display = None             # 64x32-pixel monochrome display
+        ###> font
+
+        self.emu_speed = 500            # an int representing the Hz (cycles per second) that the emulator's main loop should run at
+
+    #---------
+
+    def _fetch():
+        
+        return
+
+    def _execute(opcode):
+        """ """
+        pass
+        # put all opcodes and if/else here
+        # OR - have decode stage where opcode is matched to an instruction?
+
+    # see -> https://en.wikipedia.org/wiki/Instruction_cycle#Summary_of_stages
+    def _main_loop(self):
+        cycle_delay = 1/self.emu_speed
+        while True:
+            t1 = time()
+            opcode = self._fetch()
+            self._execute(opcode)
+            t2 = time()
+            sleep(max(0, cycle_delay - (t2-t1)))
+            # enforce emulation speed by pausing execution for
+            # aproximiately the seconds spent for one cycle at `self.emu_speed` Hz,
+            # subtracting the time it took for the instruction cycle to execute.
+            # max() is used to ensure that no negative number can be passed to sleep (would result in error)
+
+
+    #---
+
+    def load_program(self, file_path:str):
+        """load a CHIP-8 program file from provided path"""
+        prog_start_mem_adr = 0x200                      # program start memory adress - convention is to load programs starting at memory adress 0x200 (512 in dec)
+        with open(file_path, "rb") as program:          # open file as read-only bytes
+            for i, byte in enumerate(program.read()):   # read entire file (returns a bytes object), enumerate to get index of each byte, 
+                i = prog_start_mem_adr + i
+                self.memory.write(i, byte)              # and then write each byte to memory, with offset from the program start memory adress
+
+    def set_emulation_speed(self, hz:int):
+        """set the emulation speed in Hz (cycles per second)"""
+        if not isinstance(hz, int):
+            raise ValueError('hz arg must be int')
+        self.emu_speed = hz
+
+    def run(self, program_file_path:str):
+        """run a CHIP-8 program/rom (provided file path) on the CHIP-8 emulator!"""
+        self.load_program(program_file_path)
+        self._main_loop()
+
+
+
+
+#################################################################
+#################################################################
+# OLD CODE vvv
+#################################################################
+#################################################################
+
+def load_rom(emulator):
+    rom = "test_opcode.ch8"
+
+    with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
+        #for index, byte in enumerate(file):
+        #    memory[512+index] = byte
+        offset = 0
+        while True:
+            chunk = file.read(1)
+            if not chunk:
+                break
+            for byte in chunk:
+                assert type(byte) == int
+                emulator.memory[512 + offset] = byte
+                offset += 1
 
 class Emulator():
     def __init__(self):
@@ -137,32 +341,10 @@ font = [
 ]
 
 # storing the font sprite data in memory
-"""
 counter = 0
 for sprite in font:
     Emulator().memory[0x050 + counter] = sprite
     counter += 1
-"""
-
-#################################################################
-
-# load rom
-
-def load_rom(emulator):
-    rom = "test_opcode.ch8"
-
-    with open(rom, "rb") as file:       # `rb` means *read* file as *bytes*
-        #for index, byte in enumerate(file):
-        #    memory[512+index] = byte
-        offset = 0
-        while True:
-            chunk = file.read(1)
-            if not chunk:
-                break
-            for byte in chunk:
-                assert type(byte) == int
-                emulator.memory[512 + offset] = byte
-                offset += 1
 
 #################################################################
 
@@ -376,7 +558,7 @@ def step(emulator, check_key):
         emulator.memory[emulator.i] = int(vx / 100)
         emulator.memory[emulator.i + 1] = int((vx % 100) / 10)
         emulator.memory[emulator.i + 2] = vx % 10
-# BROKEN    # FX55 - WRTIE TO MEMORY - Stores values from registers V0 to VX (including VX) to memory, starting at address I
+    # FX55 - WRTIE TO MEMORY - Stores values from registers V0 to VX (including VX) to memory, starting at address I
         # **has alternate behavior for old roms** - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/#fx55-and-fx65-store-and-load-memory
     if opcodechar1 == 0xF and opcodechar3 == 0x5:
         vx = emulator.registers[opcodechar2]
@@ -414,11 +596,13 @@ def step(emulator, check_key):
     # testing
     print("pc: ", emulator.pc)
     print("hex pc: ", hex(emulator.pc))
-    print("current opcode: ", emulator.memory[emulator.pc], emulator.memory[emulator.pc + 1])
+    print("current opcode: ", hex(emulator.memory[emulator.pc]), hex(emulator.memory[emulator.pc + 1]))
     print("i: ", emulator.i)
     print("hex i", hex(emulator.i))
     print("registers: ", emulator.registers)
     print("hex registers", [hex(x) for x in emulator.registers])
+
+######################################
 
 # if not running in tests, actually start the game loop
 if __name__ == "__main__":
