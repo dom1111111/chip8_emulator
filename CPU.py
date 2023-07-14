@@ -141,7 +141,7 @@ class NoisyCountDown(FixedBitCountDown):
     """Works just like FixedBitCountDown, but will play a tone as long as the set value is above 0"""
     def __init__(self, bit_size:int, rate:int):
         super().__init__(bit_size, rate)
-        self.tone = PlayTone()
+        self.tone = PlayTone(440)
     
     def _main_loop(self):
         while True:
@@ -165,7 +165,7 @@ class HexKeyPad:
             0x7: 'a', 0x8: 's', 0x9: 'd', 0xE: 'f',
             0xA: 'z', 0x0: 'x', 0xB: 'c', 0xF: 'v',
         }
-        self._reversed_key_map = {value:key for key, value in self.key_map.items()}
+        self._reversed_key_map = {value:key for key, value in self._key_map.items()}
     
     def is_key_pressed(self, key:int) -> bool:
         """Return True if key is pressed, otherwise False."""
@@ -617,7 +617,7 @@ class Emulator():
 
     def _cycle(self):
         instruction = self._fetch()
-        self._execute(self._decode(instruction))
+        self._execute(*(self._decode(instruction)))
 
     #---
 
@@ -659,3 +659,9 @@ class Emulator():
             sleep(cycle_delay)
             # ^ enforce emulation speed by pausing execution for aproximiately
             # the seconds spent for one cycle at `self.emu_speed` Hz,
+
+###############################################
+
+if __name__ == "__main__":
+    emu = Emulator()
+    emu.run('./ch8_programs/test_opcode.ch8')

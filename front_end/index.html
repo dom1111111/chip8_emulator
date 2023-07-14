@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" href="./style.css" />
+        <title>Dom's CHIP-8 Emulator</title>
+    </head>
+    <body>
+        <div class="layout-container">
+            <div class="main">
+                <pre class="screen"></pre>          <!-- for emulator text character based screen -->           
+            </div>
+            <div class="infobar">
+                <pre class="info"></pre>            <!-- to display output on emulator state (like print to terminal) -->  
+            </div>
+            <div class="sidebar">                   <!-- holds the controls to adjust emulator settings -->  
+                <h1>Emulator Settings</h1>
+                <div>
+                    <span>Cycle Speed</span>
+                    <input type="range" min="1" max="1000" value="500">
+                    <input type="number">
+                </div>
+
+                <!--
+                <div class="control-column">
+                    <span>Cycle Speed</span>
+                    <div class="control-row">
+                        <input type="range">
+                        <input type="number">
+                    </div>
+                </div>
+                -->
+                
+            
+            </div>
+            <div class="hexpad">                    <!-- shows which hexkeys are being pressed -->  
+                <button>1</button> <button>2</button> <button>3</button> <button>C</button>
+                <button>4</button> <button>5</button> <button>6</button> <button>D</button>
+                <button>7</button> <button>8</button> <button>9</button> <button>E</button>
+                <button>A</button> <button>0</button> <button>B</button> <button>F</button>
+            </div>
+        </div>
+        <script src="./script.js"></script>
+    </body>
+</html>
+
