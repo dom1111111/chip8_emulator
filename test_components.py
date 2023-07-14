@@ -1,4 +1,4 @@
-from CPU import *
+from components import *
 
 #################################################################
 # tests for CHIP-8 component classes
