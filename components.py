@@ -3,6 +3,7 @@ import os
 from threading import Thread, Lock, Event
 import keyboard
 #import PyAudio
+import front_end.webview_interface as wvi
 
 #################################################################
 # Classes to make CHIP-8 components
@@ -139,8 +140,8 @@ class PlayTone():
 class NoisyCountDown(FixedBitCountDown):
     """Works just like FixedBitCountDown, but will play a tone as long as the set value is above 0"""
     def __init__(self, bit_size:int, rate:int):
-        super().__init__(bit_size, rate)
         self.tone = PlayTone(440)
+        super().__init__(bit_size, rate)
     
     def _main_loop(self):
         while True:
@@ -180,9 +181,9 @@ class HexKeyPad:
                 return self._reversed_key_map.get(keypress)
 
 
-class TerminalDisplay:
+class TextModeDisplay:
     """
-    Create a simple 'text-mode' screen within the terminal window, made up solely of characters to act as pixels.
+    Create a simple 'text-mode' screen, made up solely of characters to act as pixels.
 
     Instantiate with with int args for screen width and height.
 
@@ -190,10 +191,10 @@ class TerminalDisplay:
     * call `get_char()` to get the state (on or off) of a character at an x,y coordinate in the screen data
     * call `set_char()` to set the state of a character at an x,y coordinate in the screen data
     * call `clear_screen()` to reset screen data to completely blank state
-    * call `draw_screen` to actually draw the screen in the terminal
+    * call `draw_screen` to actually draw the screen
 
     So in order to see any changes done in calls to `set_char()` or `clear_screen()`
-    on the terminal window, a subsequent call to `draw_screen` must be made.
+    on the screen, a subsequent call to `draw_screen` must be made.
 
     For get/set_char methods, coordinates start at '0,0' at the top left corner.
     They range from `0` to `width/height - 1` (so a dimension of `10`, has a coordinate value range from `0` to `9`).
@@ -205,7 +206,11 @@ class TerminalDisplay:
         self.on_char = '()'             # characters representing on-state
         self.off_char = '  '            # character representing off-state
         self.reset_screen()             # generate blank screen matrix data
-        self.clear_on_draw = False      # if True, the terminal window will be cleared on every call to `draw_screen`
+
+    def _enforce_xy_limit(self, x:int, y:int):
+        """ensure that coordinate is within the screen width and height"""
+        if x not in range(self.width) or y not in range(self.height):
+            raise ValueError('x and y values must be within width and height')
 
     def reset_screen(self):
         """Resets the screen so that all characters are in off state"""
@@ -213,11 +218,6 @@ class TerminalDisplay:
         # All the characters are stored in a list of lists with strings of characters in them. 
         # The length of the sub-lists is determined by width, and the number of strings in the list is determined by height.
         self._screen_matrix = [([self.off_char] * self.width) for row in range(self.height)]      # generate a list of lists of strings to represent screen matrix  
-
-    def _enforce_xy_limit(self, x:int, y:int):
-        """ensure that coordinate is within the screen width and height"""
-        if x not in range(self.width) or y not in range(self.height):
-            raise ValueError('x and y values must be within width and height')
 
     def get_char(self, x:int, y:int) -> bool:
         """Get state of character cell at x,y coordinate on screen matrix. `True` means on, `False` means off."""
@@ -230,15 +230,6 @@ class TerminalDisplay:
         self._screen_matrix[y][x] = self.on_char if state else self.off_char
 
     def draw_screen(self):
-        """Draw screen by printing each string row in screen_matrix to terminal"""
-        if self.clear_on_draw:                                          # first clear terminal screen (if self.clear_on_draw is True)
-            os.system('cls' if os.name == 'nt' else 'clear')            # (should work across OS -> 'nt' means windows)
-        # '--' and '|' characters are added to print a border around the screen
-        x_border = '|-' + ('--' * self.width) + '-|'
-        print(x_border)
-        for row in self._screen_matrix:
-            print('| ', end='')
-            for char in row:
-                print(char, end='')
-            print(' |')
-        print(x_border)
+        """Draw screen by adding each string row in screen_matrix to text box"""
+        wvi.draw_to_screen([''.join(row) for row in self._screen_matrix])
+
