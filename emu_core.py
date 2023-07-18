@@ -1,37 +1,11 @@
-from time import sleep
 from random import getrandbits
-from threading import Event, Lock, Thread
 from components import *
-import front_end.webview_interface as wvi
+from webview.window import Window
 
-#################################################################
-# CHIP-8 Emulator class
+class EmulatorCore():
+    """CHIP-8 Emulator Core. Contains all instructions and components"""
 
-# a list to hold the sprite data of 16 hex characters for the display
-standard_font = [
-    0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
-    0x20, 0x60, 0x20, 0x20, 0x70, # 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, # 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, # 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, # A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, # C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, # D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
-    0xF0, 0x80, 0xF0, 0x80, 0x80  # F
-]
-
-
-class Emulator():
-    """CHIP-8 Emulator..."""
-
-    def __init__(self):
+    def __init__(self, fr_end_window:Window):
         # CHIP-8 components
         ## memory
         self.memory = FixedBitArray(8, 4096)    # 4KB (4,096 bytes) of RAM, where each cell is 1 byte
@@ -47,97 +21,13 @@ class Emulator():
         ## keypad
         self.keypad = HexKeyPad()               # 16-key hexadecimal keypad
         ## display
-        self.display = TextModeDisplay(64, 32)  # 64x32-pixel monochrome display
+        self.display = TextModeDisplay(64, 32, fr_end_window)   # 64x32-pixel monochrome display
 
-        # Misc attributes needed for emulator function
-        self.loop = Event()
-        self.lock = Lock()
-        #self.
-
-        # Emulator settings
-        self._emu_speed = 500                   # an int representing the Hz (cycles per second) that the emulator's main loop should run at
-        self._font_mem_adr = 0x050              # starting address of where the font should be loaded into memory
-        self._screen_partial_wrap = False
+        # misc settings
+        self.font_mem_adr = 0x050               # starting address of where the font should be loaded into memory
+        self.screen_partial_wrap = False
             # ^ if set to True, then sprites which start within screen dimensions, but then *partially* go outside of them, 
             # will have this outside parts wrap around to the other side of the screen. If False, then they will be clipped
-
-    #---------
-    # Settings methods
-
-    def load_font(self, font_data:list=None):
-        """Load font sprite data into memory.
-        Should be a list of 80 bytes numbers making up sprites representing hex values 0 - F 
-        (5 numbers per sprite character, 16 hex characters). Sprites MUST be in order from 0 - F!
-        """
-        font = font_data if font_data else standard_font        # if no data is provided, then `standard_font` will be used
-        for n, byte in enumerate(font):                         # write each byte number of font into memory,
-            self.memory.write(self._font_mem_adr, byte)          # starting at `font_mem_adr`
-
-    def load_program(self, file_path:str):
-        """load a CHIP-8 program file from provided path"""
-        prog_start_mem_adr = 0x200                      # program start memory address - convention is to load programs starting at memory address 0x200 (512 in dec)
-        with open(file_path, "rb") as program:          # open file as read-only bytes
-            for i, byte in enumerate(program.read()):   # read entire file (returns a bytes object), enumerate to get index of each byte, 
-                i = prog_start_mem_adr + i
-                self.memory.write(i, byte)              # and then write each byte to memory, with offset from the program start memory address
-
-    def set_emulation_speed(self, hz:int):
-        """set the emulation speed in Hz (cycles per second)"""
-        if not isinstance(hz, int):
-            raise ValueError('hz arg must be int')
-        self._emu_speed = hz
-
-    #---------
-    # Main run methods
-
-    def _main_loop(self):
-        wvi.is_loaded.wait()                    # wait until webview window is loaded
-        self.display.reset_screen()             # reset screen data
-        self.display.draw_screen()              # draw blank screen
-
-        while True:
-            self.loop.wait()                    # if loop event is not set, wait until it is. Otherwise this does nothing
-
-            # execute one cycle
-            instruction = self._fetch()
-            self._execute(*(self._decode(instruction)))
-
-            # display emulator settings in front end
-            wvi.display_emu_state({
-                'opcode':   instruction,
-                # stack
-                # registers
-                'pc':       self.pc.get(),
-                'i':        self.i.get(),
-                'dt':       self.dt.get(),
-                'st':       self.st.get()
-            })
-            
-            #self.keypad.which_key_pressed()    # add this to a new function to display keypress
-
-            with self.lock:                     # lock is needed so that emulation speed can be changed while running!
-                sleep(1/self._emu_speed)
-                # enforce emulation speed by pausing execution for aproximiately
-                # the seconds spent for one cycle at `self.emu_speed` Hz
-
-    def run(self):
-        """start emulation loop or resume if paused. If no CHIP-8 program/ROM has been loaded yet, this won't do much"""
-        self.loop.set()
-
-    def pause(self):
-        """pause emulation loop"""
-        self.loop.clear()
-
-# INCOMPLETE
-    #def reset(self):
-        """stop running and reset emulator"""
-    #    self.loop.clear()
-    #    self.memory.clear()
-
-    def start(self):
-        """Start up CHIP-8 emulator! Call `run()` to start cycle loop. THIS IS BLOCKING"""
-        Thread(target=self._main_loop, daemon=True).start() # must be started in new thread, because webview is blocking
-        wvi.start_webview()
 
     #---------
     # Instruction cycle methods
@@ -355,7 +245,7 @@ class Emulator():
                 # get y-coordinate from register Vy mod display height + y_offset
                 y_c = (self.v_registers.read(vy) % self.display.height) + y_offset
                 if y_c >= self.display.height:                          # if the y-coordinate is past the screen height:                     
-                    if self._screen_partial_wrap:                        # and `screen_partial_wrap` is True,
+                    if self.screen_partial_wrap:                        # and `screen_partial_wrap` is True,
                         y_c = y_c % self.display.height                 # then set y-coordinate to wrap the sprite back over the top (again with modulo)
                     else:
                         break                                           # otherwise, clip the sprite (stop drawing to screen)
@@ -368,7 +258,7 @@ class Emulator():
                     # get x-coordinate from register Vx mod display width + x_offset
                     x_c = (self.v_registers.read(vx) % self.display.width) + x_offset
                     if x_c >= self.display.height:                      # if the x-coordinate is past the screen width:                     
-                        if self._screen_partial_wrap:                    # and `screen_partial_wrap` is True,
+                        if self.screen_partial_wrap:                    # and `screen_partial_wrap` is True,
                             y_c = y_c % self.display.height             # then set x-coordinate to wrap the sprite back over to the left side (again with modulo)
                         else:
 # MAKE THIS EXIT OUT OF BOTH LOOPS
@@ -433,7 +323,7 @@ class Emulator():
         ########## FX29 ########## - Set I to location of sprite for character in Vx
             elif n == 0x9:
                 # set value of i to location of font character sprite representing Vx
-                self.i.set(self._font_mem_adr + (vx * 5))
+                self.i.set(self.font_mem_adr + (vx * 5))
                 # location is determined by multiplying Vx value by 5 (because each sprite is 5 bytes long),
                 # and then offsetting the result from the font's starting address (self.font_mem_adr)
 
@@ -458,3 +348,13 @@ class Emulator():
                 for n in range(vx + 1):
                     # for each loop, write value at memory adress i+n, into register Vn
                     self.v_registers.write(n, self.memory.read(self.i.get() + n))
+
+    #---------
+    # main method
+
+    def cycle(self) -> int:
+        """Perform one complete cycle of the emulator (fetch instruction, decode, execute).
+        Returns the instruction/opcode that was executed"""
+        instruction = self._fetch()
+        self._execute(*(self._decode(instruction)))
+        return instruction

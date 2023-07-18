@@ -1,45 +1,7 @@
-import webview
-from os import path
-from threading import Event
+"""JS and general functions to be accessed by python"""
+from webview.window import Window
 
-#################################################################
-# python methods to be accessed by JS
-
-class JS_API:
-    def do_thing():
-        print('suh')
-
-#################################################################
-# Pywebview setup
-
-is_loaded = Event()                    # used to keep track of whether or not the webview window is running
-
-html_path = path.join(path.dirname(__file__), 'index.html')
-
-# setup pywebview window, attaching HTML file and JS_API class
-window = webview.create_window('CHIP-8 Emulator', html_path, js_api=JS_API)
-
-def on_loaded():
-    print('webview window is loaded')
-    is_loaded.set()
-
-def on_closed():
-    print('webview window is closed')
-    is_loaded.clear()
-
-# register functions to load and close to set/clear `is_running` event
-window.events.loaded += on_loaded
-window.events.closed += on_closed
-
-def start_webview():
-    """start rendering the front end GUI in a webview. This function is blocking!
-    MUST BE CALLED BEFORE ANY OTHER FUNCTIONS"""
-    webview.start()
-
-#################################################################
-# JS and general functions to be accessed by python
-
-def draw_to_screen(charRows:list):
+def draw_to_screen(window:Window, charRows:list):
     """`charRows` should be a list of strings representing each row of the text-character-based screen"""
     window.evaluate_js(fr"""
         const screen = document.querySelector(".screen");
@@ -48,7 +10,7 @@ def draw_to_screen(charRows:list):
         screen.innerHTML = screenChars;
     """)    #double curly braces is needed to excape curly braces
 
-def display_emu_state(props:dict):
+def display_emu_state(window:Window, props:dict):
     """`props` should be a dictionary with all the properties and values relating to the emulators current state"""
     window.evaluate_js(fr"""
         let s = '';

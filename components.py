@@ -3,7 +3,8 @@ import os
 from threading import Thread, Lock, Event
 import keyboard
 #import PyAudio
-import front_end.webview_interface as wvi
+from webview.window import Window
+import front_end.script_functions as fr_end
 
 #################################################################
 # Classes to make CHIP-8 components
@@ -185,7 +186,7 @@ class TextModeDisplay:
     """
     Create a simple 'text-mode' screen, made up solely of characters to act as pixels.
 
-    Instantiate with with int args for screen width and height.
+    Instantiate with with int args for screen width and height, + a window object to render screen in the front-end
 
     Methods:
     * call `get_char()` to get the state (on or off) of a character at an x,y coordinate in the screen data
@@ -199,13 +200,14 @@ class TextModeDisplay:
     For get/set_char methods, coordinates start at '0,0' at the top left corner.
     They range from `0` to `width/height - 1` (so a dimension of `10`, has a coordinate value range from `0` to `9`).
     """
-    def __init__(self, width:int=64, height:int=32):
+    def __init__(self, width:int, height:int, window:Window):
         self.width = width              # screen width
         self.height = height            # screen height
         # there are 2 characters for each on/off_char string in order to widen the screen horizontally, so that width is more even with height (because characters cells are taller than they are wide))
         self.on_char = '()'             # characters representing on-state
         self.off_char = '  '            # character representing off-state
         self.reset_screen()             # generate blank screen matrix data
+        self.window = window            # Front-end window (used by display instruction)
 
     def _enforce_xy_limit(self, x:int, y:int):
         """ensure that coordinate is within the screen width and height"""
@@ -231,5 +233,5 @@ class TextModeDisplay:
 
     def draw_screen(self):
         """Draw screen by adding each string row in screen_matrix to text box"""
-        wvi.draw_to_screen([''.join(row) for row in self._screen_matrix])
+        fr_end.draw_to_screen(self.window, [''.join(row) for row in self._screen_matrix])
 
