@@ -50,7 +50,6 @@ body {
     grid-area: sidebar;
     display: flex;
     flex-direction: column;
-    /* justify-content: space-evenly; */
     row-gap: 5%;
     align-items: center;
     padding: 5%;
@@ -94,8 +93,16 @@ body {
 
 /* --- sidebar elements --- */
 
-.sidebar > h1{
+.sidebar > h1  {
     font-size: 125%;
+}
+
+.sidebar > button {
+    font-size: 1rem;            /* rem is relative to font-size of the root element*/
+}
+
+.run-pause {
+    color: green;
 }
 
 /* any div in sidebar are to group together controls */

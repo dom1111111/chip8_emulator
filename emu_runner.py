@@ -88,17 +88,12 @@ class EmulatorRunner():
     # Main run methods
 
     def _start_loop(self):
-        # setup screen:
         self.wv_loaded.wait()                   # wait until webview window is loaded
-        self.emu.display.reset_screen()         # reset screen data
-        self.emu.display.draw_screen()          # draw blank screen
-        sleep(5)
-        print('suuuuh!')
         # main loop:
         while True:
             self.loop.wait()                    # if loop event is not set, wait until it is. Otherwise this does nothing
             instruction = self.emu.cycle()      # execute one cycle
-            fr_end.display_emu_state(self.window, {             # display emulator settings in front end
+            fr_end.display_emu_state(self.window, { # display emulator settings in front end
                 'opcode':   instruction,
                 # stack
                 # registers
