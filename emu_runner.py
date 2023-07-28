@@ -39,7 +39,7 @@ class EmulatorRunner():
     From there, you can load programs/ROMS, adjust settings, and then actually run the emulation cycle loop
     """
     def __init__(self):
-        self.window = webview.create_window('CHIP-8 Emulator', html_path)   # setup pywebview window, attaching HTML file
+        self.window = webview.create_window('CHIP-8 Emulator', html_path, width=1000, height=750)   # setup pywebview window, attaching HTML file
         self.emu = EmulatorCore(self.window)                                # Instantiate emulator core
         self.loop = Event()             # used to run/pause emulation loop
         self.wv_loaded = Event()        # used to keep track of whether or not the webview window is running
@@ -92,6 +92,25 @@ class EmulatorRunner():
         print('webview window is closed')
         self.wv_loaded.clear()
 
+    #---
+    # Misc
+
+    def display_emu_props(self, instruction):
+        """display emulator properties in the front end"""
+        emu_props = {                       # dictionary of emulator properties
+            'pc':       self.emu.pc.get(),
+            'opcode':   instruction,
+            # stack
+            # registers
+            'i':        self.emu.i.get(),
+            'dt':       self.emu.dt.get(),
+            'st':       self.emu.st.get()
+        }
+        for key in emu_props:               # convert all values in dict to uppercase hex strings (without '0x')
+            emu_props[key] = hex(emu_props[key])[2:].upper()
+        # display emulator properties in front end, by evaluting js of a function call to `displayEmuState`:
+        self.window.evaluate_js(f"displayEmuState({emu_props})")
+
     #---------
     # Main run methods
 
@@ -102,17 +121,7 @@ class EmulatorRunner():
         while True:
             self.loop.wait()                    # if loop event is not set, wait until it is. Otherwise this does nothing
             instruction = self.emu.cycle()      # execute one cycle
-            emu_props = {                       # dictionary of emulator properties
-                'pc':       self.emu.pc.get(),
-                'opcode':   instruction,
-                # stack
-                # registers
-                'i':        self.emu.i.get(),
-                'dt':       self.emu.dt.get(),
-                'st':       self.emu.st.get()
-            }
-            # display emulator properties in front end, by evaluting js of a functioncall to `displayEmuState`:
-            self.window.evaluate_js(f"displayEmuState({emu_props})")
+            self.display_emu_props(instruction) # display emulator properties in front end
             with self.lock:                     # lock is needed so that emulation speed can be changed while running!
                 sleep(1/self._emu_speed)
                 # enforce emulation speed by pausing execution for aproximiately

@@ -21,7 +21,7 @@ class EmulatorCore():
         ## keypad
         self.keypad = HexKeyPad()               # 16-key hexadecimal keypad
         ## display
-        self.display = TextModeDisplay(64, 32, fr_end_window)   # 64x32-pixel monochrome display
+        self.display = Display(64, 32, fr_end_window)   # 64x32-pixel monochrome display
 
         # misc settings
         self.font_mem_adr = 0x050               # starting address of where the font should be loaded into memory
@@ -83,7 +83,7 @@ class EmulatorCore():
         ########## 00E0 ########## - Clear the screen
             if n == 0x0:
                 # reset the screen to be blank
-                self.display.reset_screen()
+                self.display.reset()
 
         ########## 00EE ########## - Return from a subroutine
             elif n == 0xE:
@@ -266,10 +266,10 @@ class EmulatorCore():
 
                     # now draw bit to screen at coordinates - with XOR:
                     if bit == '1':                                      # if bit is 1, # (if bit is 0, then don't need to change anything)
-                        if not self.display.get_char(x_c, y_c):         # and cell at coordinate is off,
-                            self.display.set_char(x_c, y_c, True)       # then set cell to on (True)
+                        if not self.display.get_cell(x_c, y_c):         # and cell at coordinate is off,
+                            self.display.set_cell(x_c, y_c, True)       # then set cell to on (True)
                         else:
-                            self.display.set_char(x_c, y_c, False)      # otherwise if both are on/1 (a collision), then set cell to off (False)
+                            self.display.set_cell(x_c, y_c, False)      # otherwise if both are on/1 (a collision), then set cell to off (False)
                             self.v_registers.write(0xF, 1)              # and also set register Vf (flag) to 1
 
             self.display.draw_screen()      # finally, actually update the screen with the changes made

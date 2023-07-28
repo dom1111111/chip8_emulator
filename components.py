@@ -181,31 +181,29 @@ class HexKeyPad:
                 return self._reversed_key_map.get(keypress)
 
 
-class TextModeDisplay:
+class Display:
     """
-    Create a simple 'text-mode' screen, made up solely of characters to act as pixels.
+    Create a simple screen.
 
     Instantiate with with int args for screen width and height, + a window object to render screen in the front-end
 
     Methods:
-    * call `get_char()` to get the state (on or off) of a character at an x,y coordinate in the screen data
-    * call `set_char()` to set the state of a character at an x,y coordinate in the screen data
-    * call `clear_screen()` to reset screen data to completely blank state
-    * call `draw_screen` to actually draw the screen
+    * `get_cell()`      - get the state of a cell at an x,y coordinate in the screen matrix
+    * `set_cell()`      - set the state of a cell at an x,y coordinate in the screen matrix
+    * `reset()`         - reset screen matrix to completely off state
+    * `draw_screen()`   - actually draw the matrix to front end screen
 
-    So in order to see any changes done in calls to `set_char()` or `clear_screen()`
+    In order to see any changes done in calls to `set_cell()` or `reset()`
     on the screen, a subsequent call to `draw_screen` must be made.
 
-    For get/set_char methods, coordinates start at '0,0' at the top left corner.
+    For get/set_cell methods, coordinates start at '0,0' at the top left corner.
     They range from `0` to `width/height - 1` (so a dimension of `10`, has a coordinate value range from `0` to `9`).
     """
     def __init__(self, width:int, height:int, window:Window):
         self.width = width              # screen width
         self.height = height            # screen height
-        # there are 2 characters for each on/off_char string in order to widen the screen horizontally, so that width is more even with height (because characters cells are taller than they are wide))
-        self.on_char = '()'             # characters representing on-state
-        self.off_char = '  '            # character representing off-state
-        self.reset_screen()             # generate blank screen matrix data
+        self._screen_matrix = []        # stores a list of lists of booleans, to store the state of each screen cell
+        self.reset()                    # generate blank screen matrix data
         self.window = window            # Front-end window (used by display instruction)
 
     def _enforce_xy_limit(self, x:int, y:int):
@@ -213,24 +211,23 @@ class TextModeDisplay:
         if x not in range(self.width) or y not in range(self.height):
             raise ValueError('x and y values must be within width and height')
 
-    def reset_screen(self):
-        """Resets the screen so that all characters are in off state"""
-        # The 'text mode' screen is made up solely of text characters, rather than pixels.
-        # All the characters are stored in a list of lists with strings of characters in them. 
-        # The length of the sub-lists is determined by width, and the number of strings in the list is determined by height.
-        self._screen_matrix = [([self.off_char] * self.width) for row in range(self.height)]      # generate a list of lists of strings to represent screen matrix  
-
-    def get_char(self, x:int, y:int) -> bool:
-        """Get state of character cell at x,y coordinate on screen matrix. `True` means on, `False` means off."""
+    def get_cell(self, x:int, y:int) -> bool:
+        """Get state of cell at x,y coordinate on screen matrix. `True` means on, `False` means off."""
         self._enforce_xy_limit(x, y)
-        return True if self._screen_matrix[y][x] == self.on_char else False
+        return self._screen_matrix[y][x]
 
-    def set_char(self, x:int, y:int, state:bool):
-        """Set state of character cell at x,y coordinate on screen matrix. State `True` means on, `False` means off."""
+    def set_cell(self, x:int, y:int, state:bool):
+        """Set state of cell at x,y coordinate on screen matrix. State `True` means on, `False` means off."""
         self._enforce_xy_limit(x, y)
-        self._screen_matrix[y][x] = self.on_char if state else self.off_char
+        assert isinstance(state, bool)
+        self._screen_matrix[y][x] = state
+
+    def reset(self):
+        """Resets the screen so that all cells are in off state"""
+        self._screen_matrix = [([False] * self.width) for row in range(self.height)]    # generate a list of lists of bools to represent screen matrix  
 
     def draw_screen(self):
-        """Draw screen by adding each string row in screen_matrix to text box"""
-        char_rows = [''.join(row) for row in self._screen_matrix]
-        self.window.evaluate_js(f"drawToScreen({char_rows})")
+        """Send matrix state data to front end screen"""
+        # all bools must be converted to ints before sending to js, because python bools don't get translated to js bools
+        converted_screen = [[(1 if state else 0) for state in row] for row in self._screen_matrix]
+        self.window.evaluate_js(f"drawToScreen({converted_screen})")

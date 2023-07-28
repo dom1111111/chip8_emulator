@@ -19,12 +19,26 @@ function setSpeed(val) {
 
 /**
  * Draw to screen
- * @param {Array} charRows -- should be a list of strings representing each row of the text-character-based screen, 
- * and the strings themselves should have the screen "pixel" characters
+ * @param {Array} charRows -- should be an array of arrays representing rows, and each of those rows should be filled with binary ints (0 or 1) 
+ * - The number of "rows" should correspond to the intended *height* of the screen
+ * - the number ints in the rows should correspond to the intended *width* of the screen
 */
 function drawToScreen(charRows) {
+    // there are 2 characters for each on/off_char string in order to widen the screen horizontally, 
+    // so that width is more even with height (because characters cells are taller than they are wide))
+    const on_char = "██"
+    const off_char = "  "
     let screenChars = '';
-    for (const row of charRows) {screenChars += row + '<br>'};
+    for (const row of charRows) {
+        for (const charState of row) {
+            if (charState === 1) {
+                screenChars += on_char;
+            } else if (charState === 0) {
+                screenChars += off_char;
+            };
+        };
+        screenChars += '<br>';
+    };
     screen.innerHTML = screenChars;
 };
 
@@ -88,4 +102,4 @@ speedBox.addEventListener("input", function() {
 // starting script
 
 // generate initial empty screen
-document.querySelector(".screen").innerHTML = ('  '.repeat(64) + '<br>').repeat(32);
+screen.innerHTML = ('  '.repeat(64) + '<br>').repeat(32);
