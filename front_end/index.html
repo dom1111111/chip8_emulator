@@ -17,14 +17,19 @@
                 <h1>Emulator Settings</h1>
                 <div>
                     <span>Load Program</span>
-                    <input type="file" name="load_program">
+                    <!-- <input type="file" class="load-program" name="load_program"> // browser based, unused --> 
+                    <button class="load-program" type="button">Browse...</button>
                 </div>
-                <button type="button" class="reset">Reset</button>
-                <button type="button" class="run-pause">Run</button>
                 <div>
-                    <span>Cycle Speed</span>
-                    <input type="range" min="1" max="1000" value="500">
-                    <input type="number">
+                    <span>Run Emulator</span>
+                    <button class="reset" type="button">Reset</button>
+                    <button class="run-pause" type="button">Run</button>
+                </div>
+                <div>
+                    <span>Cycle Speed (Hz)</span>
+                    <input class="speed-slider" type="range" min="1" max="1000" value="500">
+                    <input class="speed-box" type="number" min="1" max="1000" value="500">
+                    <!-- <span>Hz</span> -->
                 </div>
             </div>
             <div class="hexpad">                    <!-- shows which hexkeys are being pressed -->  

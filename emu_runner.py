@@ -57,6 +57,7 @@ class EmulatorRunner():
         """
         for n, byte in enumerate(font_data):                    # write each byte number of font into memory,
             self.emu.memory.write(self.emu.font_mem_adr, byte)  # starting at `font_mem_adr`
+        print('font loaded into memory')
 
     def load_program(self, file_path:str):
         """load a CHIP-8 program file from provided path"""
@@ -65,6 +66,13 @@ class EmulatorRunner():
             for i, byte in enumerate(program.read()):   # read entire file (returns a bytes object), enumerate to get index of each byte, 
                 i = prog_start_mem_adr + i
                 self.emu.memory.write(i, byte)          # and then write each byte to memory, with offset from the program start memory address
+        self.emu.pc.set(prog_start_mem_adr)
+        print('program loaded into memory')
+
+    def get_program_then_load(self):
+        path = self.window.create_file_dialog(webview.OPEN_DIALOG, file_types=('CHIP8 Files (*.ch8)', ))[0]
+        if path:
+            self.load_program(path)
 
     def set_emulation_speed(self, hz:int):
         """set the emulation speed in Hz (cycles per second)"""
@@ -72,6 +80,7 @@ class EmulatorRunner():
             raise ValueError('hz arg must be int')
         with self.lock:
             self._emu_speed = hz
+        print('emulation speed changed to', hz)
 
     #---------
     # Pywebview methods
@@ -88,6 +97,7 @@ class EmulatorRunner():
     # Main run methods
 
     def _start_loop(self):
+        print('emulator core ready')
         self.wv_loaded.wait()                   # wait until webview window is loaded
         # main loop:
         while True:
@@ -111,10 +121,12 @@ class EmulatorRunner():
     def run_loop(self):
         """start emulation loop or resume if paused. If no CHIP-8 program/ROM has been loaded yet, this won't do much"""
         self.loop.set()
+        print('emulation loop running')
 
     def pause_loop(self):
         """pause emulation loop"""
         self.loop.clear()
+        print('emulation loop paused')
 
 # INCOMPLETE
     def reset(self):
@@ -122,6 +134,7 @@ class EmulatorRunner():
         pass
         # self.loop.clear()
         # self.memory.clear()
+        print('emulator reset')
     
     def start(self):
         """Start up CHIP-8 emulator! Then call `run()` to start cycle loop. THIS IS BLOCKING"""
@@ -131,7 +144,7 @@ class EmulatorRunner():
         self.window.events.loaded += self._on_loaded
         self.window.events.closed += self._on_closed
         # expose methods to JS domain so that they can be used by front-end js script
-        self.window.expose(self.load_font, self.load_program, self.set_emulation_speed, self.run_loop, self.pause_loop, self.reset)
+        self.window.expose(self.get_program_then_load, self.set_emulation_speed, self.run_loop, self.pause_loop, self.reset)
         # start main loop in new thread 
             # (this could be passed as first arg to `webview.start()` which would do the same thing, 
             # but it seems the thread is not daemon and program persists even after window is closed,
