@@ -4,7 +4,6 @@ from threading import Thread, Lock, Event
 import keyboard
 #import PyAudio
 from webview.window import Window
-import front_end.script_functions as fr_end
 
 #################################################################
 # Classes to make CHIP-8 components
@@ -233,5 +232,5 @@ class TextModeDisplay:
 
     def draw_screen(self):
         """Draw screen by adding each string row in screen_matrix to text box"""
-        fr_end.draw_to_screen(self.window, [''.join(row) for row in self._screen_matrix])
-
+        char_rows = [''.join(row) for row in self._screen_matrix]
+        self.window.evaluate_js(f"drawToScreen({char_rows})")

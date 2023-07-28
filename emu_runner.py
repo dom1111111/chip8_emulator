@@ -3,7 +3,6 @@ from os import path
 from threading import Event, Lock, Thread
 import webview
 from emu_core import EmulatorCore
-import front_end.script_functions as fr_end
 
 # a list to hold the sprite data of 16 hex characters for the display
 standard_font = [
@@ -103,16 +102,17 @@ class EmulatorRunner():
         while True:
             self.loop.wait()                    # if loop event is not set, wait until it is. Otherwise this does nothing
             instruction = self.emu.cycle()      # execute one cycle
-            fr_end.display_emu_state(self.window, { # display emulator settings in front end
+            emu_props = {                       # dictionary of emulator properties
+                'pc':       self.emu.pc.get(),
                 'opcode':   instruction,
                 # stack
                 # registers
-                'pc':       self.emu.pc.get(),
                 'i':        self.emu.i.get(),
                 'dt':       self.emu.dt.get(),
                 'st':       self.emu.st.get()
-            })
-            #self.keypad.which_key_pressed()    # add this to a new function to display keypress
+            }
+            # display emulator properties in front end, by evaluting js of a functioncall to `displayEmuState`:
+            self.window.evaluate_js(f"displayEmuState({emu_props})")
             with self.lock:                     # lock is needed so that emulation speed can be changed while running!
                 sleep(1/self._emu_speed)
                 # enforce emulation speed by pausing execution for aproximiately
@@ -138,8 +138,7 @@ class EmulatorRunner():
     
     def start(self):
         """Start up CHIP-8 emulator! Then call `run()` to start cycle loop. THIS IS BLOCKING"""
-        # load font (can be called again, but initially just use `standard_font`)
-        self.load_font(standard_font)
+        self.load_font(standard_font)   # load font (can be called again, but initially just use `standard_font`)
         # register functions to load and close events to set/clear `is_running`
         self.window.events.loaded += self._on_loaded
         self.window.events.closed += self._on_closed
@@ -151,4 +150,11 @@ class EmulatorRunner():
             # so manual thread creation is neccessary)
         Thread(target=self._start_loop, daemon=True).start()
         # start rendering the front end GUI in a webview. This function is blocking!
-        webview.start()
+        webview.start(debug=False)      # set `debug` to True to show browser window console, etc. (F12)
+
+
+#################################################################
+
+if __name__ == "__main__":
+    emu = EmulatorRunner()
+    emu.start()     # this is blocking
